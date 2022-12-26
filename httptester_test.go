@@ -7,25 +7,21 @@ import (
 	"net/http"
 )
 
-func ExampleHttpTester() {
-	// Create a test server to demonstrate the httptester API.
-	handler := http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		// This just always replies with some JSON.
-		out, _ := json.Marshal([]map[string]any{
-			{
-				"name": "Scotty",
-				"address": map[string]any{
-					"number": "123",
-					"street": "Fake Street",
-					"city":   "Cloud City",
-					"zip":    "71622",
-				},
-			},
-		})
+var exampleJson = []map[string]any{
+	{
+		"name": "Scotty",
+		"address": map[string]any{
+			"number": "123",
+			"street": "Fake Street",
+			"city":   "Cloud City",
+			"zip":    "71622",
+		},
+	},
+}
 
-		writer.Header().Set("Content-Type", "application/json")
-		_, _ = writer.Write(out)
-	})
+func ExampleHttpTester() {
+	// For this example, our handler always returns some static JSON.
+	handler := exampleHttpHandler()
 
 	// In your tests, t will be given to you. For this example, this just prints
 	// any test failures.
@@ -79,6 +75,17 @@ func ExampleHttpTester() {
 	// $[0].foo
 	// full data
 	// [{"address":{"city":"Cloud City","number":"123","street":"Fake Street","zip":"71622"},"name":"Scotty"}]
+}
+
+// exampleHttpHandler creates a test handler to demonstrate the httptester API.
+// This just always replies with some JSON.
+func exampleHttpHandler() http.Handler {
+	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		out, _ := json.Marshal(exampleJson)
+
+		writer.Header().Set("Content-Type", "application/json")
+		_, _ = writer.Write(out)
+	})
 }
 
 // used to satisfy a testing.TB within our example code.
