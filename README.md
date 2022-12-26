@@ -5,6 +5,11 @@ An opinionated API for making assertions against HTTP servers in high-level test
 The goal here is to make for succinct yet descriptive tests against an HTTP application. Support
 is mainly focussed around JSON APIs.
 
+As with many Go projects, this started out as a package within a personal project, but I moved this
+out to reuse elsewhere. Feel free to use it too, but consider it experimental.
+
+[Full docs](https://pkg.go.dev/github.com/vaeryn-uk/go-httptester)
+
 ```go
 package my_server_test
 
@@ -47,5 +52,3 @@ func TestMyServer(t *testing.T) {
 		Test("optional additional info here will be printed on test failure")
 }
 ```
-
-[Full docs](https://pkg.go.dev/github.com/vaeryn-uk/go-httptester)
