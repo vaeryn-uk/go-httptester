@@ -26,9 +26,9 @@ func JsonContainsStr(t TestingTB, data string, pathexpr string, extra ...any) st
 	var capturedStr string
 	capturedStr, isStr := captured.(string)
 	if !isStr {
-		args := []any{"jsonpath does not resolve to a non-empty value in", "path", pathexpr, "full data", data}
+		args := []any{"path", pathexpr, "full data", data}
 		args = append(args, extra...)
-		fatal(t, args)
+		fatal(t, "jsonpath does not resolve to a non-empty value in", args...)
 	}
 
 	return capturedStr

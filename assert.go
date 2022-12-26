@@ -36,9 +36,9 @@ func equals(t TestingTB, expected, actual any, extra ...any) {
 	t.Helper()
 
 	if !reflect.DeepEqual(expected, actual) {
-		args := []any{"values are not equal", "expected", expected, "actual", actual}
-		args = append(args, extra)
-		fatal(t, args)
+		args := []any{"expected", expected, "actual", actual}
+		args = append(args, extra...)
+		fatal(t, "values are not equal", args...)
 	}
 }
 
