@@ -12,7 +12,10 @@ import (
 // JsonContainsStr fatals the test if the provided JSON data does not contain a string value
 // at pathexpr, as per JSONPath.
 // https://www.ietf.org/archive/id/draft-goessner-dispatch-jsonpath-00.html
+// Returns the resolved string.
 func JsonContainsStr(t TestingTB, data string, pathexpr string, extra ...any) string {
+	t.Helper()
+
 	builder := gval.Full(jsonpath.PlaceholderExtension())
 
 	path, err := builder.NewEvaluable(pathexpr)
