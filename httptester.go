@@ -126,6 +126,7 @@ func (h *HttpTester) JsonBody(body any, args ...any) RequestOption {
 func (h *HttpTester) ExpectCode(code int) ResponseOption {
 	return func(expectation *HttpExpectation) {
 		expectation.addExpectation(func(response *http.Response, body string, extra ...any) {
+			h.t.Helper()
 			equals(h.t, code, response.StatusCode, extra...)
 		})
 	}
@@ -156,6 +157,8 @@ func (h *HttpTester) ExpectContentType(contentType string) ResponseOption {
 // ExpectJsonExists configures an HttpExpectation to require a JSON body which contains
 // a non-empty string value at jsonpath path.
 func (h *HttpTester) ExpectJsonExists(path string) ResponseOption {
+	h.t.Helper()
+
 	return func(expectation *HttpExpectation) {
 		expectation.addExpectation(func(response *http.Response, body string, extra ...any) {
 			JsonContainsStr(h.t, body, path, extra...)
@@ -168,6 +171,8 @@ func (h *HttpTester) ExpectJsonExists(path string) ResponseOption {
 func (h *HttpTester) ExpectJsonMatchStr(path, match string) ResponseOption {
 	return func(expectation *HttpExpectation) {
 		expectation.addExpectation(func(response *http.Response, body string, extra ...any) {
+			h.t.Helper()
+
 			equals(h.t, match, JsonContainsStr(h.t, body, path, extra...), extra...)
 		})
 	}
@@ -178,6 +183,8 @@ func (h *HttpTester) ExpectJsonMatchStr(path, match string) ResponseOption {
 // Will fatal if there are no string value to capture, so this implies ExpectJsonExists.
 func (h *HttpTester) CaptureJson(name, jsonpath string) ResponseOption {
 	return func(expectation *HttpExpectation) {
+		h.t.Helper()
+		
 		expectation.jsonCaptures[name] = jsonpath
 	}
 }
@@ -225,6 +232,8 @@ func (h *HttpExpectation) addExpectation(expectation responseExpectation) {
 // Test executes the associated request, failing if expectations are not met,
 // else applies any captures.
 func (h *HttpExpectation) Test(extra ...any) (captures map[string]string) {
+	h.request.tester.t.Helper()
+
 	h.request.done = true
 
 	r := h.request.request
