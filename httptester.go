@@ -55,7 +55,7 @@ func New(t TestingTB, srv *httptest.Server) *HttpTester {
 	t.Cleanup(func() {
 		for _, req := range tester.requests {
 			if !req.done {
-				fatal(t, "forgot to execute Test on test request at:\n%s\n", string(req.stack))
+				fatal(t, fmt.Sprintf("forgot to execute Test on test request at:\n%s\n", string(req.stack)))
 			}
 		}
 	})
