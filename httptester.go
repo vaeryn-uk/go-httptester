@@ -181,6 +181,20 @@ func (h *HttpTester) ExpectJsonMatchStr(path, match string) ResponseOption {
 	}
 }
 
+// ExpectJsonMatch asserts that the HTTP response has a JSON body which contains a value
+// at JSON path which matches parameter match.
+// Note that numbers in the JSON will be float64 in Go.
+func (h *HttpTester) ExpectJsonMatch(path string, match any) ResponseOption {
+	return func(expectation *HttpExpectation) {
+		expectation.addExpectation(func(response *http.Response, body string, extra ...any) {
+			h.t.Helper()
+
+			extra = append([]any{fmt.Sprintf("json path: %s", path)}, extra...)
+			equals(h.t, match, JsonContains(h.t, body, path, extra...), extra...)
+		})
+	}
+}
+
 // CaptureJson defines a capture against the response's JSON body. If
 // successful, this capture is available under name from HttpExpectation.Test.
 // Will fatal if there are no string value to capture, so this implies ExpectJsonExists.

@@ -14,6 +14,24 @@ import (
 // https://www.ietf.org/archive/id/draft-goessner-dispatch-jsonpath-00.html
 // Returns the resolved string.
 func JsonContainsStr(t TestingTB, data string, pathexpr string, extra ...any) string {
+	captured := JsonContains(t, data, pathexpr, extra...)
+
+	var capturedStr string
+	capturedStr, isStr := captured.(string)
+	if !isStr {
+		args := []any{"path", pathexpr, "val", captured, "full data", data}
+		args = append(args, extra...)
+		fatal(t, "jsonpath does not resolve to a string value", args...)
+	}
+
+	return capturedStr
+}
+
+// JsonContains fatals the test if the provided JSON data does not contain a value
+// at pathexpr, as per JSONPath.
+// https://www.ietf.org/archive/id/draft-goessner-dispatch-jsonpath-00.html
+// Returns the resolved value.
+func JsonContains(t TestingTB, data string, pathexpr string, extra ...any) any {
 	t.Helper()
 
 	builder := gval.Full(jsonpath.PlaceholderExtension())
@@ -26,15 +44,7 @@ func JsonContainsStr(t TestingTB, data string, pathexpr string, extra ...any) st
 	captured, err := path(context.Background(), body)
 	must(t, err, "failed to capture JSON path", pathexpr, "full data", data)
 
-	var capturedStr string
-	capturedStr, isStr := captured.(string)
-	if !isStr {
-		args := []any{"path", pathexpr, "full data", data}
-		args = append(args, extra...)
-		fatal(t, "jsonpath does not resolve to a non-empty value in", args...)
-	}
-
-	return capturedStr
+	return captured
 }
 
 // MustParseJson will fatal the test if in cannot be decoded. Returns the decoded
