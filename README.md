@@ -27,9 +27,10 @@ func TestMyServer(t *testing.T) {
 	// when the test is ended.
 	srv := httptester.Server(t, serverToTest)
 
-	// Create a new tester to assert against it.
+	// Create a new tester to test an HTTP request + response.
 	ht := httptester.New(t, srv)
 
+	// Define a request.
 	ht.Request(
 		"GET",
 		"/",
@@ -38,7 +39,7 @@ func TestMyServer(t *testing.T) {
 		// Or a JSON body.
 		ht.JsonBody("some data"),
 	).Expect(
-		// Use ExpectXXX() to make assertions against it.
+		// Use ExpectXXX() to set up assertions against the resulting response.
 		// Like its return code.
 		ht.ExpectCode(200),
 		// Or that the raw body contains some string.
@@ -47,8 +48,7 @@ func TestMyServer(t *testing.T) {
 		ht.ExpectJsonExists("$[0].name"),
 		// Or that a jsonpath expression resolve to some specific value
 		ht.ExpectJsonMatchStr("$[0].name", "Scotty"),
-	).
-		// Finally invoke Test() to perform the test.
-		Test("optional additional info here will be printed on test failure")
+    // Finally invoke Test() to perform the test.
+	).Test("optional additional info here will be printed on test failure")
 }
 ```
