@@ -43,5 +43,5 @@ func equals(t TestingTB, expected, actual any, extra ...any) {
 }
 
 func format(val any) string {
-	return fmt.Sprintf("%v (%T)", val, val)
+	return fmt.Sprintf("%v", val)
 }
