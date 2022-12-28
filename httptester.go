@@ -161,6 +161,8 @@ func (h *HttpTester) ExpectJsonExists(path string) ResponseOption {
 
 	return func(expectation *HttpExpectation) {
 		expectation.addExpectation(func(response *http.Response, body string, extra ...any) {
+			h.t.Helper()
+
 			JsonContainsStr(h.t, body, path, extra...)
 		})
 	}
@@ -185,7 +187,7 @@ func (h *HttpTester) ExpectJsonMatchStr(path, match string) ResponseOption {
 func (h *HttpTester) CaptureJson(name, jsonpath string) ResponseOption {
 	return func(expectation *HttpExpectation) {
 		h.t.Helper()
-		
+
 		expectation.jsonCaptures[name] = jsonpath
 	}
 }
