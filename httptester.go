@@ -89,9 +89,7 @@ func (h *HttpTester) Request(method, path string, options ...RequestOption) *Htt
 
 // Bearer configures a HttpTesterRequest with an bearer authorization token.
 func (h *HttpTester) Bearer(token string) RequestOption {
-	return func(req *HttpTesterRequest) {
-		req.request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
-	}
+	return h.Header("Authorization", fmt.Sprintf("Bearer %s", token))
 }
 
 // Header configures a HttpTesterRequest to have a have with the given name, set to the
