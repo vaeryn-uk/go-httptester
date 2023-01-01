@@ -94,6 +94,16 @@ func (h *HttpTester) Bearer(token string) RequestOption {
 	}
 }
 
+// Header configures a HttpTesterRequest to have a have with the given name, set to the
+// given val. E.g.:
+//
+//	ht.Header("Content-Type", "text/plain")
+func (h *HttpTester) Header(name, val string) RequestOption {
+	return func(req *HttpTesterRequest) {
+		req.request.Header.Set(name, val)
+	}
+}
+
 // JsonBody configures a HttpTesterRequest with a JSON body. Supports format
 // parameters. If body is a reader, will grab the string data from that. If it
 // is any other non-string body, we json.Unmarshal it to get a string.
