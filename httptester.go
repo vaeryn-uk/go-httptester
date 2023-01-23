@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/vaeryn-uk/frostember-server/pkg/fbrmath"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"net/http/httputil"
@@ -33,10 +35,11 @@ func Server(t TestingTB, handler http.Handler) *httptest.Server {
 // HttpTester offers a convenient API for high-level HTTP testing.
 // Use New to get one.
 type HttpTester struct {
-	t        TestingTB
-	srv      *httptest.Server
-	client   *http.Client
-	requests []*HttpTesterRequest
+	t             TestingTB
+	srv           *httptest.Server
+	client        *http.Client
+	requests      []*HttpTesterRequest
+	multipartForm *multipart.Writer
 }
 
 // New creates a new HttpTester wrapping t and using srv.
@@ -130,6 +133,26 @@ func (h *HttpTester) JsonBody(body any, args ...any) RequestOption {
 	}
 }
 
+func (h *HttpTester) MultipartFormFile(fieldname, filename string, data io.Reader) RequestOption {
+	return func(req *HttpTesterRequest) {
+		file, err := req.multipart().CreateFormFile(fieldname, filename)
+		must(h.t, err)
+
+		_, err = io.Copy(file, data)
+		must(h.t, err)
+	}
+}
+
+func (h *HttpTester) MultipartFormField(name string, val []byte) RequestOption {
+	return func(req *HttpTesterRequest) {
+		field, err := req.multipart().CreateFormField(name)
+		must(h.t, err)
+
+		_, err = field.Write(val)
+		must(h.t, err)
+	}
+}
+
 // ExpectCode configures an HttpExpectation to require a certain response code.
 func (h *HttpTester) ExpectCode(code int) ResponseOption {
 	return func(expectation *HttpExpectation) {
@@ -216,10 +239,12 @@ func (h *HttpTester) CaptureJson(name, jsonpath string) ResponseOption {
 
 // HttpTesterRequest defines a request we're going to test against.
 type HttpTesterRequest struct {
-	request *http.Request
-	tester  *HttpTester
-	done    bool
-	stack   []byte
+	request             *http.Request
+	tester              *HttpTester
+	done                bool
+	stack               []byte
+	multipartForm       *multipart.Writer
+	multipartFormBuffer *bytes.Buffer
 }
 
 // Expect returns a configured HttpExpectation to test against.
@@ -254,6 +279,33 @@ func (h *HttpExpectation) addExpectation(expectation responseExpectation) {
 	h.responseExpectations = append(h.responseExpectations, expectation)
 }
 
+func (h *HttpTesterRequest) multipart() *multipart.Writer {
+	if h.multipartForm == nil {
+		h.multipartFormBuffer = &bytes.Buffer{}
+		h.multipartForm = multipart.NewWriter(h.multipartFormBuffer)
+	}
+
+	return h.multipartForm
+}
+
+func (h *HttpTesterRequest) finalise() *http.Request {
+	if h.multipartForm == nil {
+		return h.request
+	}
+
+	// Finish and attach a multipart form if we have started one.
+	must(h.tester.t, h.multipartForm.Close())
+	h.request.Body = io.NopCloser(h.multipartFormBuffer)
+
+	h.request.Header.Set("Content-Type", h.multipartForm.FormDataContentType())
+
+	return h.request
+}
+
+// MaxReqRespOutput is used when reporting test failures. The maximum amount
+// of request or response output is printed.
+var MaxReqRespOutput = 1200
+
 // Test executes the associated request, failing if expectations are not met,
 // else applies any captures.
 func (h *HttpExpectation) Test(extra ...any) (captures map[string]string) {
@@ -261,7 +313,7 @@ func (h *HttpExpectation) Test(extra ...any) (captures map[string]string) {
 
 	h.request.done = true
 
-	r := h.request.request
+	r := h.request.finalise()
 	srv := h.request.tester.srv
 	t := h.request.tester.t
 
@@ -270,7 +322,8 @@ func (h *HttpExpectation) Test(extra ...any) (captures map[string]string) {
 	must(t, err, extra...)
 
 	if reqData, err := httputil.DumpRequest(r, true); err == nil {
-		extra = append(extra, "HTTP request:", string(reqData))
+		l, _ := fbrmath.Min(MaxReqRespOutput, len(reqData))
+		extra = append(extra, "HTTP request:", string(reqData[0:l]))
 	}
 
 	resp, err := h.request.tester.client.Do(r)
@@ -286,7 +339,8 @@ func (h *HttpExpectation) Test(extra ...any) (captures map[string]string) {
 	bodyStr := string(body)
 
 	if respData, err := httputil.DumpResponse(resp, true); err == nil {
-		extra = append(extra, "HTTP response:", string(respData))
+		l, _ := fbrmath.Min(MaxReqRespOutput, len(respData))
+		extra = append(extra, "HTTP response:", string(respData[0:l]))
 	} else {
 		t.Log(err)
 	}
