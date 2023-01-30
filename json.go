@@ -14,6 +14,8 @@ import (
 // https://www.ietf.org/archive/id/draft-goessner-dispatch-jsonpath-00.html
 // Returns the resolved string.
 func JsonContainsStr(t TestingTB, data string, pathexpr string, extra ...any) string {
+	t.Helper()
+
 	captured := JsonContains(t, data, pathexpr, extra...)
 
 	var capturedStr string
