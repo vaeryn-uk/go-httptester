@@ -49,6 +49,24 @@ func JsonContains(t TestingTB, data string, pathexpr string, extra ...any) any {
 	return captured
 }
 
+func JsonNotContains(t TestingTB, data string, pathexpr string, extra ...any) any {
+	t.Helper()
+
+	builder := gval.Full(jsonpath.PlaceholderExtension())
+
+	path, err := builder.NewEvaluable(pathexpr)
+	must(t, err, extra...)
+
+	body := MustParseJson[any](t, strings.NewReader(data), extra...)
+
+	captured, err := path(context.Background(), body)
+	if err == nil {
+		fatal(t, "did not expect JSON path to exist", "path", pathexpr, "matched", captured)
+	}
+
+	return captured
+}
+
 // MustParseJson will fatal the test if in cannot be decoded. Returns the decoded
 // item.
 func MustParseJson[T any](t TestingTB, in io.Reader, extra ...any) T {

@@ -185,6 +185,18 @@ func (h *HttpTester) ExpectContentType(contentType string) ResponseOption {
 	}
 }
 
+func (h *HttpTester) ExpectJsonNotExists(path string) ResponseOption {
+	h.t.Helper()
+
+	return func(expectation *HttpExpectation) {
+		expectation.addExpectation(func(response *http.Response, body string, extra ...any) {
+			h.t.Helper()
+
+			JsonNotContains(h.t, body, path, extra...)
+		})
+	}
+}
+
 // ExpectJsonExists configures an HttpExpectation to require a JSON body which contains
 // a non-empty string value at jsonpath path.
 func (h *HttpTester) ExpectJsonExists(path string) ResponseOption {
