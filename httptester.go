@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/ghodss/yaml"
 	"github.com/vaeryn-uk/frostember-server/pkg/fbrmath"
 	"io"
 	"mime/multipart"
@@ -105,19 +106,37 @@ func (h *HttpTester) Header(name, val string) RequestOption {
 	}
 }
 
-// JsonBody configures a HttpTesterRequest with a JSON body. Supports format
-// parameters. If body is a reader, will grab the string data from that. If it
-// is any other non-string body, we json.Unmarshal it to get a string.
-func (h *HttpTester) JsonBody(body any, args ...any) RequestOption {
-	var bodyStr string
+// Body configures a HttpTesterRequest with some data. If body is an
+// io.Reader, will grab the string data from that. Will fail the test if
+// given something other than a string or reader.
+//
+// As a convenience, args will be applied to the body via fmt.Printf rules.
+func (h *HttpTester) Body(body any, args ...any) RequestOption {
+	h.t.Helper()
 
-	if asReader, isReader := body.(io.Reader); isReader {
-		bodyBytes, err := io.ReadAll(asReader)
-		must(h.t, err)
-		bodyStr = string(bodyBytes)
+	bodyStr, isStr := h.stringifyReader(body)
+
+	bodyStr, isStr = body.(string)
+
+	if !isStr {
+		fatal(h.t, "Body() must be given a string or an io.Reader")
 	}
 
-	var isStr bool
+	return func(req *HttpTesterRequest) {
+		req.request.Body = io.NopCloser(strings.NewReader(fmt.Sprintf(bodyStr, args...)))
+	}
+}
+
+// JsonBody configures a HttpTesterRequest with a JSON body. If body is an
+// io.Reader, will grab the string data from that. If it is any other non-string
+// body, we json.Unmarshal it to get a string.
+//
+// As a convenience, args will be applied to the JSONified data via fmt.Printf rules
+// after the JSON is generated.
+func (h *HttpTester) JsonBody(body any, args ...any) RequestOption {
+	h.t.Helper()
+
+	bodyStr, isStr := h.stringifyReader(body)
 
 	bodyStr, isStr = body.(string)
 
@@ -129,6 +148,33 @@ func (h *HttpTester) JsonBody(body any, args ...any) RequestOption {
 
 	return func(req *HttpTesterRequest) {
 		req.request.Header.Set("Content-Type", "application/json")
+		req.request.Body = io.NopCloser(strings.NewReader(fmt.Sprintf(bodyStr, args...)))
+	}
+}
+
+// YamlBody configures a HttpTesterRequest with a YAML body. If body is an
+// io.Reader, will grab the string data from that. If it is any other non-string
+// body, we yaml.Unmarshal it to get a string.
+//
+// As a convenience, args will be applied to the YAMLified data via fmt.Printf rules
+// after the YAML is generated.
+//
+// "application/x-yaml" is set as the request content type.
+func (h *HttpTester) YamlBody(body any, args ...any) RequestOption {
+	h.t.Helper()
+
+	bodyStr, isStr := h.stringifyReader(body)
+
+	bodyStr, isStr = body.(string)
+
+	if !isStr {
+		b, err := yaml.Marshal(body)
+		must(h.t, err, "cannot convert body data to YAML", body)
+		bodyStr = string(b)
+	}
+
+	return func(req *HttpTesterRequest) {
+		req.request.Header.Set("Content-Type", "application/x-yaml")
 		req.request.Body = io.NopCloser(strings.NewReader(fmt.Sprintf(bodyStr, args...)))
 	}
 }
@@ -226,6 +272,7 @@ func (h *HttpTester) ExpectJsonMatchStr(path, match string) ResponseOption {
 
 // ExpectJsonMatch asserts that the HTTP response has a JSON body which contains a value
 // at JSON path which matches parameter match.
+//
 // Note that numbers in the JSON will be float64 in Go.
 func (h *HttpTester) ExpectJsonMatch(path string, match any) ResponseOption {
 	return func(expectation *HttpExpectation) {
@@ -234,6 +281,31 @@ func (h *HttpTester) ExpectJsonMatch(path string, match any) ResponseOption {
 
 			extra = append([]any{fmt.Sprintf("json path: %s", path)}, extra...)
 			equals(h.t, match, JsonContains(h.t, body, path, extra...), extra...)
+		})
+	}
+}
+
+// ExpectYamlMatch asserts that the HTTP response has a YAML body which contains a value
+// at JSON path which matches the parameter match.
+//
+// This convert YAML to JSON, then performs matching as per JSONPath.
+//
+// This makes no assertions on the response's content type, but will fail the test if
+// the content cannot be parsed as YAML.
+//
+// Note that numbers in the JSON will be float64 in Go.
+func (h *HttpTester) ExpectYamlMatch(path string, match any) ResponseOption {
+	return func(expectation *HttpExpectation) {
+		expectation.addExpectation(func(response *http.Response, body string, extra ...any) {
+			h.t.Helper()
+
+			extra = append([]any{fmt.Sprintf("json path: %s", path)}, extra...)
+
+			var parsedData any
+			err := yaml.Unmarshal([]byte(body), &parsedData)
+			must(h.t, err, append([]any{"failed to decode response body as YAML"}, extra...))
+
+			equals(h.t, match, DataContains(h.t, parsedData, path, extra...), extra...)
 		})
 	}
 }
@@ -368,4 +440,27 @@ func (h *HttpExpectation) Test(extra ...any) (captures map[string]string) {
 	}
 
 	return captures
+}
+
+// stringifyReader will extract a string from data if it can, returning that string
+// and a flag to say whether it was done.
+//
+// This is used to increase flexibility in what some of this API can accept and sort
+// out for the user automatically.
+func (h *HttpTester) stringifyReader(data any) (string, bool) {
+	h.t.Helper()
+
+	var bodyStr string
+
+	if asReader, isReader := data.(io.Reader); isReader {
+		bodyBytes, err := io.ReadAll(asReader)
+		must(h.t, err)
+		bodyStr = string(bodyBytes)
+	}
+
+	var isStr bool
+
+	bodyStr, isStr = data.(string)
+
+	return bodyStr, isStr
 }

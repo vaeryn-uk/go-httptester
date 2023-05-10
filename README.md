@@ -48,7 +48,7 @@ func TestMyServer(t *testing.T) {
 		ht.ExpectJsonExists("$[0].name"),
 		// Or that a jsonpath expression resolve to some specific value
 		ht.ExpectJsonMatchStr("$[0].name", "Scotty"),
-    // Finally invoke Test() to perform the test.
+	// Finally invoke Test() to perform the test.
 	).Test("optional additional info here will be printed on test failure")
 }
 ```

@@ -36,19 +36,30 @@ func JsonContainsStr(t TestingTB, data string, pathexpr string, extra ...any) st
 func JsonContains(t TestingTB, data string, pathexpr string, extra ...any) any {
 	t.Helper()
 
+	body := MustParseJson[any](t, strings.NewReader(data), extra...)
+
+	return DataContains(t, body, pathexpr, extra...)
+}
+
+// DataContains fatals if the provided data does not contain a value at
+// pathexpr, as per JSONPath. This is like JsonContains, but does not assume a
+// JSON string, instead checking against the provided parsed data.
+func DataContains(t TestingTB, data any, pathexpr string, extra ...any) any {
+	t.Helper()
+
 	builder := gval.Full(jsonpath.PlaceholderExtension())
 
 	path, err := builder.NewEvaluable(pathexpr)
 	must(t, err, extra...)
 
-	body := MustParseJson[any](t, strings.NewReader(data), extra...)
-
-	captured, err := path(context.Background(), body)
+	captured, err := path(context.Background(), data)
 	must(t, err, "failed to capture JSON path", pathexpr, "full data", data)
 
 	return captured
 }
 
+// JsonNotContains is the inversion of JsonContains. This fatals the test if the provided
+// JSON path expression matches anything in data.
 func JsonNotContains(t TestingTB, data string, pathexpr string, extra ...any) any {
 	t.Helper()
 
