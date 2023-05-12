@@ -72,7 +72,16 @@ func JsonNotContains(t TestingTB, data string, pathexpr string, extra ...any) an
 
 	captured, err := path(context.Background(), body)
 	if err == nil {
-		fatal(t, "did not expect JSON path to exist", "path", pathexpr, "matched", captured)
+		fatal(
+			t,
+			"did not expect JSON path to exist",
+			"path",
+			pathexpr,
+			"matched",
+			captured,
+			"full data",
+			data,
+		)
 	}
 
 	return captured
