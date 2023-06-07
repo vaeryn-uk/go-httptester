@@ -1,6 +1,7 @@
 package httptester
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"github.com/PaesslerAG/gval"
@@ -21,6 +22,12 @@ func JsonContainsStr(t TestingTB, data string, pathexpr string, extra ...any) st
 	var capturedStr string
 	capturedStr, isStr := captured.(string)
 	if !isStr {
+		// JSON encode data for cleaner failure messages.
+		pretty := &bytes.Buffer{}
+		if err := json.Indent(pretty, []byte(data), "", "  "); err == nil {
+			data = pretty.String()
+		}
+
 		args := []any{"path", pathexpr, "val", captured, "full data", data}
 		args = append(args, extra...)
 		fatal(t, "jsonpath does not resolve to a string value", args...)
@@ -53,6 +60,13 @@ func DataContains(t TestingTB, data any, pathexpr string, extra ...any) any {
 	must(t, err, extra...)
 
 	captured, err := path(context.Background(), data)
+
+	// JSON encode data for cleaner failure messages.
+	asJson, err := json.MarshalIndent(data, "", "  ")
+	if err != nil {
+		data = asJson
+	}
+
 	must(t, err, "failed to capture JSON path", pathexpr, "full data", data)
 
 	return captured
